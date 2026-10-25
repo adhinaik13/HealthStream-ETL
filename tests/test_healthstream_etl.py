@@ -50,6 +50,13 @@ class HealthStreamETLTests(unittest.TestCase):
         self.assertEqual(report["accepted_rows"], 0)
         self.assertEqual(report["rejected_rows"], 2)
 
+    def test_rejects_amount_outside_decimal_range_without_crashing(self):
+        self.write_rows([self.row("e1", amount_usd="1e999999999999999999")])
+        report = run_etl(self.source, self.output)
+        self.assertEqual(report["accepted_rows"], 0)
+        self.assertEqual(report["rejected_rows"], 1)
+        self.assertIn("supported numeric range", report["rejection_details"][0]["reason"])
+
     def test_deduplicates_event_id(self):
         self.write_rows([self.row("same"), self.row("same", amount_usd="99")])
         report = run_etl(self.source, self.output)
