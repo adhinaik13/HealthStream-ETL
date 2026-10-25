@@ -65,6 +65,29 @@ class HealthStreamETLTests(unittest.TestCase):
         stored = json.loads((self.output / "quality_report.json").read_text(encoding="utf-8"))
         self.assertEqual(stored["status"], "completed_with_rejections")
 
+    def test_rejects_empty_identifiers_and_non_finite_amounts(self):
+        self.write_rows([
+            self.row(" ", patient_key="p2"),
+            self.row("e2", patient_key="  "),
+            self.row("e3", amount_usd="NaN"),
+            self.row("e4", amount_usd="Infinity"),
+        ])
+        report = run_etl(self.source, self.output)
+        self.assertEqual(report["accepted_rows"], 0)
+        self.assertEqual(report["rejected_rows"], 4)
+
+    def test_normalizes_money_to_cents_and_sorts_output(self):
+        self.write_rows([
+            self.row("z", event_date="2026-01-03", amount_usd="1.235"),
+            self.row("a", event_date="2026-01-01", amount_usd="2"),
+        ])
+        report = run_etl(self.source, self.output)
+        self.assertEqual(report["accepted_rows"], 2)
+        with (self.output / "cleaned_events.csv").open(newline="", encoding="utf-8") as handle:
+            events = list(csv.DictReader(handle))
+        self.assertEqual([event["event_id"] for event in events], ["a", "z"])
+        self.assertEqual(events[1]["amount_usd"], "1.24")
+
     def test_fails_fast_on_missing_schema(self):
         self.source.write_text("event_id,patient_key\ne1,p1\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "missing required columns"):
