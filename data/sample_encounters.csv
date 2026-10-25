@@ -1,0 +1,8 @@
+event_id,patient_key,event_date,encounter_type,diagnosis_code,amount_usd
+evt-1001,patient-a12,2026-10-01,Outpatient,z00.00,125.00
+evt-1002,patient-b34,2026-10-01,Emergency,r51,340.50
+evt-1003,patient-c56,2026-10-02,Inpatient,j18.9,1250.00
+evt-1004,patient-a12,2026-10-02,outpatient,e11.9,85.25
+evt-1002,patient-b34,2026-10-01,Emergency,r51,340.50
+evt-1005,patient-d78,not-a-date,Outpatient,z00.00,75.00
+evt-1006,patient-e90,2026-10-03,Outpatient,e78.5,-10.00
