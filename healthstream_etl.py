@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -50,6 +49,10 @@ def _normalize(row: dict[str, str], row_number: int) -> tuple[dict[str, str] | N
         return None, "amount_usd must be a finite non-negative number"
     if not amount.is_finite() or amount < 0:
         return None, "amount_usd must be a finite non-negative number"
+    try:
+        normalized_amount = amount.quantize(Decimal("0.01"))
+    except InvalidOperation:
+        return None, "amount_usd is outside the supported numeric range"
 
     return {
         "event_id": event_id,
@@ -57,7 +60,7 @@ def _normalize(row: dict[str, str], row_number: int) -> tuple[dict[str, str] | N
         "event_date": event_date.isoformat(),
         "encounter_type": encounter_type,
         "diagnosis_code": diagnosis_code,
-        "amount_usd": format(amount.quantize(Decimal("0.01")), "f"),
+        "amount_usd": format(normalized_amount, "f"),
     }, None
 
 
