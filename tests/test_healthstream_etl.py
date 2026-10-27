@@ -93,6 +93,24 @@ class HealthStreamETLTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing required columns"):
             run_etl(self.source, self.output)
 
+    def test_fails_fast_on_duplicate_header_columns(self):
+        self.source.write_text(
+            "event_id,event_id,patient_key,event_date,encounter_type,diagnosis_code,amount_usd\n"
+            "e1,e2,p1,2026-01-02,outpatient,z00.00,10\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "duplicate column names"):
+            run_etl(self.source, self.output)
+
+    def test_fails_fast_on_blank_header_column(self):
+        self.source.write_text(
+            "event_id,patient_key,event_date,encounter_type,diagnosis_code,amount_usd,\n"
+            "e1,p1,2026-01-02,outpatient,z00.00,10,extra\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "empty column name"):
+            run_etl(self.source, self.output)
+
 
 if __name__ == "__main__":
     unittest.main()
