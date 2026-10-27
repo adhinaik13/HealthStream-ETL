@@ -74,6 +74,10 @@ def run_etl(input_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None:
             raise ValueError("Input CSV is empty or has no header")
+        if len(reader.fieldnames) != len(set(reader.fieldnames)):
+            raise ValueError("Input CSV contains duplicate column names")
+        if any(not column.strip() for column in reader.fieldnames):
+            raise ValueError("Input CSV contains an empty column name")
         missing = [column for column in REQUIRED_COLUMNS if column not in reader.fieldnames]
         if missing:
             raise ValueError("Input CSV missing required columns: " + ", ".join(missing))
