@@ -82,15 +82,20 @@ def run_etl(input_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
     input_rows = 0
 
     with source.open("r", newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, strict=True)
         if reader.fieldnames is None:
             raise ValueError("Input CSV is empty or has no header")
+        if len(reader.fieldnames) != len(set(reader.fieldnames)):
+            raise ValueError("Input CSV contains duplicate column names")
         missing = [column for column in REQUIRED_COLUMNS if column not in reader.fieldnames]
         if missing:
             raise ValueError("Input CSV missing required columns: " + ", ".join(missing))
 
         for row_number, row in enumerate(reader, start=2):
             input_rows += 1
+            if None in row:
+                rejected.append({"row": row_number, "reason": "row contains more fields than the header"})
+                continue
             normalized, error = _normalize(row, row_number)
             if error:
                 rejected.append({"row": row_number, "reason": error})
