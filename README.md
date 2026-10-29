@@ -36,7 +36,7 @@ The output directory contains:
 - Required columns: `event_id`, `patient_key`, `event_date`, `encounter_type`, `diagnosis_code`, `amount_usd`.
 - Event IDs and patient keys must be non-empty.
 - Dates must use ISO `YYYY-MM-DD`.
-- Amounts must be finite and non-negative; values are rounded to two decimal places using Python Decimal’s default `ROUND_HALF_EVEN` rule.
+- Amounts must be finite and non-negative; values are rounded to two decimal places using Python Decimal’s default `ROUND_HALF_EVEN` rule. Tests cover halfway rounding values, empty datasets, and source-row diagnostics.
 - Repeated event IDs are counted as duplicates and only the first valid occurrence is retained.
 - Invalid records are excluded and reported; the pipeline does not silently coerce invalid values.
 
