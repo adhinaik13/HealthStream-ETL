@@ -36,13 +36,14 @@ The output directory contains:
 - Required columns: `event_id`, `patient_key`, `event_date`, `encounter_type`, `diagnosis_code`, `amount_usd`.
 - Event IDs and patient keys must be non-empty.
 - Dates must use ISO `YYYY-MM-DD`.
-- Amounts must be finite and non-negative.
+- Amounts must be finite and non-negative; values are rounded to two decimal places using Python Decimal’s default `ROUND_HALF_EVEN` rule.
 - Repeated event IDs are counted as duplicates and only the first valid occurrence is retained.
 - Invalid records are excluded and reported; the pipeline does not silently coerce invalid values.
 
 ## Design choices
 
 - Deterministic output ordering to make runs reproducible.
+- Monetary rounding uses Decimal arithmetic and the documented half-even rule to avoid binary floating-point aggregation drift.
 - Standard-library implementation keeps setup lightweight.
 - Synthetic pseudonymous keys only; no names, addresses, dates of birth, or other direct identifiers.
 - Rejected rows are summarized by input row number and reason, not copied into the output report.
