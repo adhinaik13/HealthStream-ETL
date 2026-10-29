@@ -65,10 +65,21 @@ def _normalize(row: dict[str, str], row_number: int) -> tuple[dict[str, str] | N
 
 
 def run_etl(input_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
-    """Transform input CSV and write cleaned events, summary, and quality report."""
+    """Transform input CSV and write cleaned events, summary, and quality report.
+
+    Source rows are validated as the CSV reader yields them. This avoids keeping
+    a second full copy of the raw input in memory; accepted output and audit
+    details are retained so output ordering and the quality report stay stable.
+    """
     source = Path(input_path)
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
+
+    accepted: list[dict[str, str]] = []
+    seen_ids: set[str] = set()
+    rejected: list[dict[str, Any]] = []
+    duplicate_count = 0
+    input_rows = 0
 
     with source.open("r", newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
@@ -77,25 +88,20 @@ def run_etl(input_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
         missing = [column for column in REQUIRED_COLUMNS if column not in reader.fieldnames]
         if missing:
             raise ValueError("Input CSV missing required columns: " + ", ".join(missing))
-        input_rows = list(reader)
 
-    accepted: list[dict[str, str]] = []
-    seen_ids: set[str] = set()
-    rejected: list[dict[str, Any]] = []
-    duplicate_count = 0
-
-    for row_number, row in enumerate(input_rows, start=2):
-        normalized, error = _normalize(row, row_number)
-        if error:
-            rejected.append({"row": row_number, "reason": error})
-            continue
-        assert normalized is not None
-        if normalized["event_id"] in seen_ids:
-            duplicate_count += 1
-            rejected.append({"row": row_number, "reason": "duplicate event_id"})
-            continue
-        seen_ids.add(normalized["event_id"])
-        accepted.append(normalized)
+        for row_number, row in enumerate(reader, start=2):
+            input_rows += 1
+            normalized, error = _normalize(row, row_number)
+            if error:
+                rejected.append({"row": row_number, "reason": error})
+                continue
+            assert normalized is not None
+            if normalized["event_id"] in seen_ids:
+                duplicate_count += 1
+                rejected.append({"row": row_number, "reason": "duplicate event_id"})
+                continue
+            seen_ids.add(normalized["event_id"])
+            accepted.append(normalized)
 
     accepted.sort(key=lambda item: (item["event_date"], item["encounter_type"], item["event_id"]))
     with (destination / "cleaned_events.csv").open("w", newline="", encoding="utf-8") as handle:
@@ -125,7 +131,7 @@ def run_etl(input_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
 
     report = {
         "input_file": source.name,
-        "input_rows": len(input_rows),
+        "input_rows": input_rows,
         "accepted_rows": len(accepted),
         "rejected_rows": len(rejected),
         "duplicate_rows": duplicate_count,
