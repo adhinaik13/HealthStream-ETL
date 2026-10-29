@@ -89,5 +89,47 @@ class ValidationEdgeCaseTests(unittest.TestCase):
             self.assertFalse((root / "out" / "cleaned_events.csv").exists())
 
 
+
+    def test_rejects_rows_with_surplus_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "input.csv"
+            with source.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(HEADER)
+                writer.writerow(["valid", "patient-1", "2026-01-02", "Outpatient", "z00.00", "10.00"])
+                writer.writerow(["extra", "patient-2", "2026-01-02", "Outpatient", "z00.00", "10.00", "unexpected"])
+            report = run_etl(source, root / "out")
+            self.assertEqual(report["accepted_rows"], 1)
+            self.assertEqual(report["rejected_rows"], 1)
+            self.assertEqual(report["rejection_details"], [
+                {"row": 3, "reason": "row contains more fields than the header"}
+            ])
+
+    def test_duplicate_header_names_fail_before_outputs_are_written(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "input.csv"
+            source.write_text(
+                "event_id,patient_key,event_date,encounter_type,diagnosis_code,amount_usd,amount_usd\\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "duplicate column names"):
+                run_etl(source, root / "out")
+            self.assertFalse((root / "out" / "cleaned_events.csv").exists())
+
+    def test_malformed_quoted_csv_fails_fast(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "input.csv"
+            source.write_text(
+                ",".join(HEADER) + '\\n' +
+                'e1,patient-1,2026-01-02,"unterminated,z00.00,10.00\\n',
+                encoding="utf-8",
+            )
+            with self.assertRaises(csv.Error):
+                run_etl(source, root / "out")
+            self.assertFalse((root / "out" / "cleaned_events.csv").exists())
+
 if __name__ == "__main__":
     unittest.main()
