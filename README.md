@@ -39,6 +39,7 @@ The output directory contains:
 - Amounts must be finite and non-negative; values are rounded to two decimal places using Python Decimal’s default `ROUND_HALF_EVEN` rule. Tests cover halfway rounding values, empty datasets, and source-row diagnostics.
 - Repeated event IDs are counted as duplicates and only the first valid occurrence is retained.
 - Invalid records are excluded and reported; the pipeline does not silently coerce invalid values.
+- Duplicate header names fail fast; rows with surplus fields are rejected with their source row number, and malformed CSV quoting fails rather than being silently accepted.
 
 ## Design choices
 
