@@ -111,7 +111,7 @@ class ValidationEdgeCaseTests(unittest.TestCase):
             root = Path(directory)
             source = root / "input.csv"
             source.write_text(
-                "event_id,patient_key,event_date,encounter_type,diagnosis_code,amount_usd,amount_usd\\n",
+                "event_id,patient_key,event_date,encounter_type,diagnosis_code,amount_usd,amount_usd\n",
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "duplicate column names"):
