@@ -108,6 +108,17 @@ class HealthStreamETLTests(unittest.TestCase):
             {"row": 3, "reason": "event_date must use YYYY-MM-DD"}
         ])
 
+    def test_money_rounding_uses_decimal_half_even_at_ties(self):
+        self.write_rows([
+            self.row("odd-cent", amount_usd="1.235"),
+            self.row("even-cent", amount_usd="1.245"),
+        ])
+        report = run_etl(self.source, self.output)
+        self.assertEqual(report["accepted_rows"], 2)
+        with (self.output / "cleaned_events.csv").open(newline="", encoding="utf-8") as handle:
+            amounts = {row["event_id"]: row["amount_usd"] for row in csv.DictReader(handle)}
+        self.assertEqual(amounts, {"odd-cent": "1.24", "even-cent": "1.24"})
+
     def test_fails_fast_on_missing_schema(self):
         self.source.write_text("event_id,patient_key\ne1,p1\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "missing required columns"):
