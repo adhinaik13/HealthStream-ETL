@@ -88,6 +88,26 @@ class HealthStreamETLTests(unittest.TestCase):
         self.assertEqual([event["event_id"] for event in events], ["a", "z"])
         self.assertEqual(events[1]["amount_usd"], "1.24")
 
+    def test_empty_dataset_produces_header_only_outputs_and_zero_counts(self):
+        self.write_rows([])
+        report = run_etl(self.source, self.output)
+        self.assertEqual(report["input_rows"], 0)
+        self.assertEqual(report["accepted_rows"], 0)
+        self.assertEqual(report["rejected_rows"], 0)
+        self.assertEqual(report["status"], "success")
+        with (self.output / "cleaned_events.csv").open(newline="", encoding="utf-8") as handle:
+            self.assertEqual(list(csv.DictReader(handle)), [])
+        with (self.output / "daily_summary.csv").open(newline="", encoding="utf-8") as handle:
+            self.assertEqual(list(csv.DictReader(handle)), [])
+
+    def test_rejection_report_uses_source_row_numbers(self):
+        self.write_rows([self.row("valid"), self.row("bad", event_date="not-a-date")])
+        report = run_etl(self.source, self.output)
+        self.assertEqual(report["accepted_rows"], 1)
+        self.assertEqual(report["rejection_details"], [
+            {"row": 3, "reason": "event_date must use YYYY-MM-DD"}
+        ])
+
     def test_fails_fast_on_missing_schema(self):
         self.source.write_text("event_id,patient_key\ne1,p1\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "missing required columns"):
